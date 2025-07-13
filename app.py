@@ -171,8 +171,8 @@ if submit:
     else:
         intern_id = generate_certificate_key()
         data = {
-            "intern_name": intern_name.strip(),
-            "domain": domain.strip(),
+            "intern_name": intern_name.title().strip(),
+            "domain": domain.title().strip(),
             "start_date": format_date(start_date),
             "end_date": format_date(end_date),
             "offer_date": format_date(offer_date),
@@ -212,6 +212,7 @@ if submit:
 
             send_email(email, local_pdf_path, data)
             st.success(f"✅ Offer letter sent to {email}")
+            st.experimental_rerun()
 
             with open(local_pdf_path, "rb") as f:
                 st.download_button("📥 Download Offer Letter", f, file_name=os.path.basename(local_pdf_path))
