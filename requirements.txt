@@ -3,3 +3,4 @@ docxtpl
 qrcode
 python-docx
 aspose-words-cloud
+pycryptodome
