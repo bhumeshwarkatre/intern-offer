@@ -190,7 +190,7 @@ if submit:
             with open(docx_path, "rb") as f:
                 words_api.upload_file(UploadFileRequest(f, cloud_doc_path))
 
-            save_opts = PdfSaveOptionsData(save_format="pdf", file_name=pdf_cloud_path)
+            save_opts = PdfSaveOptionsData(file_name=pdf_cloud_path)
             save_as_request = SaveAsRequest(name=cloud_doc_path, save_options_data=save_opts)
             words_api.save_as(save_as_request)
 
