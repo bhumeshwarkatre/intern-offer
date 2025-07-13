@@ -219,6 +219,12 @@ if submit:
         except Exception as e:
             st.error(f"❌ Error occurred: {e}")
 
+
+    st.markdown(
+    "<hr><center><small>© 2025 SkyHighes Technologies. All Rights Reserved.</small></center>",
+    unsafe_allow_html=True
+)
+
 # --- Admin Panel ---
 st.divider()
 with st.expander("🔐 Admin Panel"):
@@ -251,8 +257,4 @@ with st.expander("🔐 Admin Panel"):
     elif admin_key:
         st.error("❌ Invalid key.")
 
-    st.markdown(
-    "<hr><center><small>© 2025 SkyHighes Technologies. All Rights Reserved.</small></center>",
-    unsafe_allow_html=True
-)
 
