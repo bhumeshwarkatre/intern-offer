@@ -16,16 +16,11 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email import encoders
 
-# ✅ Aspose Cloud
+# Aspose Cloud
 import asposewordscloud
 from asposewordscloud.apis.words_api import WordsApi
 from asposewordscloud.models.requests import UploadFileRequest, SaveAsRequest, DownloadFileRequest
 from asposewordscloud.models import PdfSaveOptionsData
-
-# --- Setup Aspose Cloud Client ---
-api_sid = st.secrets["aspose"]["app_sid"]
-api_key = st.secrets["aspose"]["app_key"]
-words_api = WordsApi(api_sid, api_key)
 
 # --- Config ---
 st.set_page_config("Intern Offer Generator", layout="wide")
@@ -36,7 +31,12 @@ CSV_FILE = "intern_offers.csv"
 TEMPLATE_FILE = os.path.join(tempfile.gettempdir(), "offer_template.docx")
 LOGO = "logo.png"
 
-# --- Write template from base64 ---
+# --- Aspose Setup ---
+api_sid = st.secrets["aspose"]["app_sid"]
+api_key = st.secrets["aspose"]["app_key"]
+words_api = WordsApi(api_sid, api_key)
+
+# --- Template base64 write ---
 if not os.path.exists(TEMPLATE_FILE):
     encoded_template = st.secrets["template_base64"]["template_base64"]
     with open(TEMPLATE_FILE, "wb") as f:
@@ -70,7 +70,7 @@ with st.container():
 
 st.divider()
 
-# --- Utils ---
+# --- Utility Functions ---
 def format_date(d):
     return d.strftime("%A, %d %B %Y")
 
@@ -91,27 +91,36 @@ def save_to_csv(data):
     with open(CSV_FILE, mode='a', newline='') as f:
         writer = csv.writer(f)
         if not exists:
-            writer.writerow(data.keys())
-        writer.writerow(data.values())
+            writer.writerow(["Intern ID", "Intern Name", "Domain", "Start Date", "End Date", "Offer Date", "Email"])
+        writer.writerow([data['i_id'], data['intern_name'], data['domain'], data['start_date'], data['end_date'], data['offer_date'], data['email']])
 
-def send_email(receiver, pdf_path, data, filename):
+def send_email(receiver, pdf_path, data):
     msg = MIMEMultipart()
     msg['From'] = EMAIL
     msg['To'] = receiver
-    msg['Subject'] = f"🎉 Your Internship Offer - {data['intern_name']}"
+    msg['Subject'] = f"🎉 Congratulations {data['intern_name']}! Your Internship Offer"
 
     html = f"""
-    <html><body>
-    <p>Dear {data['intern_name']},</p>
-    <p>We are pleased to offer you an internship at <strong>SkyHighes Technology</strong>.</p>
-    <ul>
-        <li><b>Domain:</b> {data['domain']}</li>
-        <li><b>Start Date:</b> {data['start_date']}</li>
-        <li><b>End Date:</b> {data['end_date']}</li>
-        <li><b>Offer Date:</b> {data['offer_date']}</li>
-    </ul>
-    <p>Your offer letter is attached.</p>
-    </body></html>
+    <html>
+    <body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
+      <div style="background-color: #fff; padding: 20px; border-radius: 10px;">
+        <p>Dear {data["intern_name"]},</p>
+        <p>We are delighted to offer you an <strong>Internship Opportunity</strong> at <strong>SkyHighes Technology</strong>! 🎉</p>
+        <h3>Internship Details:</h3>
+        <ul>
+          <li><b>Intern Name:</b> {data["intern_name"]}</li>
+          <li><b>Domain:</b> {data["domain"]}</li>
+          <li><b>Start Date:</b> {data["start_date"]}</li>
+          <li><b>End Date:</b> {data["end_date"]}</li>
+          <li><b>Offer Date:</b> {data["offer_date"]}</li>
+        </ul>
+        <p>Your offer letter is attached as a PDF document. Kindly review and confirm your acceptance.</p>
+        <p>We look forward to working with you!</p>
+        <br>
+        <p><strong>SkyHighes Technology Team</strong></p>
+      </div>
+    </body>
+    </html>
     """
     msg.attach(MIMEText(html, 'html'))
 
@@ -119,6 +128,7 @@ def send_email(receiver, pdf_path, data, filename):
         part = MIMEBase("application", "octet-stream")
         part.set_payload(f.read())
         encoders.encode_base64(part)
+        filename = os.path.basename(pdf_path)
         part.add_header("Content-Disposition", f"attachment; filename={filename}")
         msg.attach(part)
 
@@ -179,38 +189,31 @@ if submit:
         except:
             st.warning("⚠️ QR insertion failed.")
 
-        # ✅ Use file name like: Offer_Ananya Naresh Dube.pdf
-        clean_name = intern_name.strip()
-        docx_filename = f"Offer_{clean_name}.docx"
-        pdf_filename = f"Offer_{clean_name}.pdf"
-
-        docx_path = os.path.join(tempfile.gettempdir(), docx_filename)
-        pdf_path = os.path.join(tempfile.gettempdir(), pdf_filename)
-
+        docx_path = os.path.join(tempfile.gettempdir(), f"Offer_{intern_name}.docx")
         doc.save(docx_path)
 
-        try:
-            # Upload to Aspose Cloud
-            with open(docx_path, "rb") as f:
-                words_api.upload_file(UploadFileRequest(f, docx_filename))
+        cloud_doc_name = f"{intern_id}.docx"
+        cloud_pdf_name = f"Offer_{intern_name}.pdf"
+        local_pdf_path = os.path.join(tempfile.gettempdir(), cloud_pdf_name)
 
-            # Convert to PDF
-            save_opts = PdfSaveOptionsData(file_name=pdf_filename)
-            save_as_request = SaveAsRequest(name=docx_filename, save_options_data=save_opts)
+        try:
+            # Upload to Aspose
+            with open(docx_path, "rb") as f:
+                words_api.upload_file(UploadFileRequest(f, cloud_doc_name))
+
+            save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
+            save_as_request = SaveAsRequest(name=cloud_doc_name, save_options_data=save_opts)
             words_api.save_as(save_as_request)
 
-            # Download PDF
-            result_stream = words_api.download_file(DownloadFileRequest(pdf_filename))
-            with open(pdf_path, "wb") as f:
-                f.write(result_stream)
+            pdf_stream = words_api.download_file(DownloadFileRequest(cloud_pdf_name))
+            with open(local_pdf_path, "wb") as f:
+                f.write(pdf_stream)
 
-            # Send via Email
-            send_email(email, pdf_path, data, pdf_filename)
+            send_email(email, local_pdf_path, data)
+            st.success(f"✅ Offer letter sent to {email}")
 
-            # Success + Download
-            st.success(f"✅ Offer Letter Sent to {email}")
-            with open(pdf_path, "rb") as f:
-                st.download_button("📥 Download Offer Letter", f, file_name=pdf_filename)
+            with open(local_pdf_path, "rb") as f:
+                st.download_button("📥 Download Offer Letter", f, file_name=os.path.basename(local_pdf_path))
 
         except Exception as e:
             st.error(f"❌ Error occurred: {e}")
@@ -229,8 +232,8 @@ with st.expander("🔐 Admin Panel"):
                     with open(CSV_FILE, "rb") as f_dl:
                         st.download_button("📥 Download CSV", f_dl, file_name="intern_offers.csv")
                 else:
-                    st.info("No data available.")
+                    st.info("No data yet.")
         else:
-            st.info("CSV log not found.")
+            st.info("CSV not found.")
     elif admin_key:
         st.error("❌ Invalid key.")
