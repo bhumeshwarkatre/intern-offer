@@ -238,5 +238,15 @@ with st.expander("🔐 Admin Panel"):
                 st.error(f"Error reading CSV: {e}")
         else:
             st.info("CSV log not found.")
+        
+        st.subheader("📤 One-Time CSV Upload (Optional)")
+        uploaded_csv = st.file_uploader("Upload Existing Intern CSV", type=["csv"])
+        if uploaded_csv is not None:
+            try:
+                with open(CSV_FILE, "wb") as f:
+                    f.write(uploaded_csv.read())
+                st.success("✅ Uploaded and saved CSV successfully.")
+            except Exception as e:
+                st.error(f"Error saving uploaded CSV: {e}")
     elif admin_key:
         st.error("❌ Invalid key.")
