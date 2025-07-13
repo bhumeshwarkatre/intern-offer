@@ -239,8 +239,7 @@ with st.expander("🔐 Admin Panel"):
         else:
             st.info("CSV log not found.")
 
-        st.markdown("<h3 style='color:#1E88E5;'>📥 One-Time CSV Upload</h3>", unsafe_allow_html=True)
-        st.subheader("📤 One-Time CSV Upload (Optional)")
+        st.markdown("<h3 style='color:#1E88E5;'>📥 One-Time CSV Upload <small style='color:gray;'>(Optional)</small></h3>", unsafe_allow_html=True)   
         uploaded_csv = st.file_uploader("Upload Existing Intern CSV", type=["csv"])
         if uploaded_csv is not None:
             try:
