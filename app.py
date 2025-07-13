@@ -212,7 +212,6 @@ if submit:
 
             send_email(email, local_pdf_path, data)
             st.success(f"✅ Offer letter sent to {email}")
-            st.rerun()
 
             with open(local_pdf_path, "rb") as f:
                 st.download_button("📥 Download Offer Letter", f, file_name=os.path.basename(local_pdf_path))
