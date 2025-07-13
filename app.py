@@ -250,3 +250,9 @@ with st.expander("🔐 Admin Panel"):
                 st.error(f"Error saving uploaded CSV: {e}")
     elif admin_key:
         st.error("❌ Invalid key.")
+
+    st.markdown(
+    "<hr><center><small>© 2025 SkyHighes Technologies. All Rights Reserved.</small></center>",
+    unsafe_allow_html=True
+)
+
