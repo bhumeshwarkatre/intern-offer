@@ -177,7 +177,7 @@ if submit:
             "end_date": format_date(end_date),
             "offer_date": format_date(offer_date),
             "i_id": intern_id,
-            "email": email.strip()
+            "email": email.lower().strip()
         }
 
         save_to_csv(data)
@@ -212,7 +212,7 @@ if submit:
 
             send_email(email, local_pdf_path, data)
             st.success(f"✅ Offer letter sent to {email}")
-            st.experimental_rerun()
+            st.rerun()
 
             with open(local_pdf_path, "rb") as f:
                 st.download_button("📥 Download Offer Letter", f, file_name=os.path.basename(local_pdf_path))
