@@ -94,7 +94,7 @@ def save_to_csv(data):
             writer.writerow(data.keys())
         writer.writerow(data.values())
 
-def send_email(receiver, pdf_path, data):
+def send_email(receiver, pdf_path, data, filename):
     msg = MIMEMultipart()
     msg['From'] = EMAIL
     msg['To'] = receiver
@@ -119,7 +119,7 @@ def send_email(receiver, pdf_path, data):
         part = MIMEBase("application", "octet-stream")
         part.set_payload(f.read())
         encoders.encode_base64(part)
-        part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(pdf_path)}")
+        part.add_header("Content-Disposition", f"attachment; filename={filename}")
         msg.attach(part)
 
     with SMTP("smtp.gmail.com", 587) as server:
@@ -179,29 +179,38 @@ if submit:
         except:
             st.warning("⚠️ QR insertion failed.")
 
-        docx_path = os.path.join(tempfile.gettempdir(), f"{intern_id}_offer.docx")
+        # ✅ Use file name like: Offer_Ananya Naresh Dube.pdf
+        clean_name = intern_name.strip()
+        docx_filename = f"Offer_{clean_name}.docx"
+        pdf_filename = f"Offer_{clean_name}.pdf"
+
+        docx_path = os.path.join(tempfile.gettempdir(), docx_filename)
+        pdf_path = os.path.join(tempfile.gettempdir(), pdf_filename)
+
         doc.save(docx_path)
 
-        cloud_doc_path = f"{intern_id}.docx"
-        pdf_cloud_path = f"{intern_id}.pdf"
-        pdf_local_path = os.path.join(tempfile.gettempdir(), pdf_cloud_path)
-
         try:
+            # Upload to Aspose Cloud
             with open(docx_path, "rb") as f:
-                words_api.upload_file(UploadFileRequest(f, cloud_doc_path))
+                words_api.upload_file(UploadFileRequest(f, docx_filename))
 
-            save_opts = PdfSaveOptionsData(file_name=pdf_cloud_path)
-            save_as_request = SaveAsRequest(name=cloud_doc_path, save_options_data=save_opts)
+            # Convert to PDF
+            save_opts = PdfSaveOptionsData(file_name=pdf_filename)
+            save_as_request = SaveAsRequest(name=docx_filename, save_options_data=save_opts)
             words_api.save_as(save_as_request)
 
-            pdf_stream = words_api.download_file(DownloadFileRequest(pdf_cloud_path))
-            with open(pdf_local_path, "wb") as f:
-                f.write(pdf_stream)
+            # Download PDF
+            result_stream = words_api.download_file(DownloadFileRequest(pdf_filename))
+            with open(pdf_path, "wb") as f:
+                f.write(result_stream)
 
-            send_email(email, pdf_local_path, data)
-            st.success(f"✅ Sent to {email}")
-            with open(pdf_local_path, "rb") as f:
-                st.download_button("📥 Download Offer Letter", f, file_name=os.path.basename(pdf_local_path))
+            # Send via Email
+            send_email(email, pdf_path, data, pdf_filename)
+
+            # Success + Download
+            st.success(f"✅ Offer Letter Sent to {email}")
+            with open(pdf_path, "rb") as f:
+                st.download_button("📥 Download Offer Letter", f, file_name=pdf_filename)
 
         except Exception as e:
             st.error(f"❌ Error occurred: {e}")
