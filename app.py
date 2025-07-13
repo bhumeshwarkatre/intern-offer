@@ -19,7 +19,8 @@ from email import encoders
 # ✅ Aspose Cloud
 import asposewordscloud
 from asposewordscloud.apis.words_api import WordsApi
-from asposewordscloud.models.requests import UploadFileRequest, SaveAsRequest
+from asposewordscloud.models.requests import UploadFileRequest, SaveAsRequest, DownloadFileRequest
+from asposewordscloud.models import PdfSaveOptionsData
 
 # --- Setup Aspose Cloud Client ---
 api_sid = st.secrets["aspose"]["app_sid"]
@@ -185,30 +186,25 @@ if submit:
         pdf_cloud_path = f"{intern_id}.pdf"
         pdf_local_path = os.path.join(tempfile.gettempdir(), pdf_cloud_path)
 
-        # ✅ Upload DOCX to Aspose Cloud Storage
-        with open(docx_path, "rb") as f:
-            upload_req = UploadFileRequest(f, cloud_doc_path)
-            words_api.upload_file(upload_req)
-
-        # ✅ Convert DOCX to PDF in Cloud
-        save_as_request = SaveAsRequest(
-            name=cloud_doc_path,
-            save_options_data={"save_format": "pdf", "file_name": pdf_cloud_path}
-        )
-        words_api.save_as(save_as_request)
-
-        # ✅ Download converted PDF
-        pdf_stream = words_api.download_file(pdf_cloud_path)
-        with open(pdf_local_path, "wb") as f:
-            f.write(pdf_stream)
-
         try:
+            with open(docx_path, "rb") as f:
+                words_api.upload_file(UploadFileRequest(f, cloud_doc_path))
+
+            save_opts = PdfSaveOptionsData(save_format="pdf", file_name=pdf_cloud_path)
+            save_as_request = SaveAsRequest(name=cloud_doc_path, save_options_data=save_opts)
+            words_api.save_as(save_as_request)
+
+            pdf_stream = words_api.download_file(DownloadFileRequest(pdf_cloud_path))
+            with open(pdf_local_path, "wb") as f:
+                f.write(pdf_stream)
+
             send_email(email, pdf_local_path, data)
             st.success(f"✅ Sent to {email}")
             with open(pdf_local_path, "rb") as f:
                 st.download_button("📥 Download Offer Letter", f, file_name=os.path.basename(pdf_local_path))
+
         except Exception as e:
-            st.error(f"❌ Email failed: {e}")
+            st.error(f"❌ Error occurred: {e}")
 
 # --- Admin Panel ---
 st.divider()
