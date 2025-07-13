@@ -15,6 +15,7 @@ from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email import encoders
+import pandas as pd
 
 # Aspose Cloud
 import asposewordscloud
@@ -225,15 +226,17 @@ with st.expander("🔐 Admin Panel"):
     if admin_key == ADMIN_KEY:
         st.success("✅ Access granted.")
         if os.path.exists(CSV_FILE):
-            with open(CSV_FILE, "r") as f:
-                rows = list(csv.reader(f))
-                if rows:
-                    st.dataframe(rows[1:], columns=rows[0])
+            try:
+                df = pd.read_csv(CSV_FILE)
+                if not df.empty:
+                    st.dataframe(df)
                     with open(CSV_FILE, "rb") as f_dl:
                         st.download_button("📥 Download CSV", f_dl, file_name="intern_offers.csv")
                 else:
-                    st.info("No data yet.")
+                    st.info("CSV file is empty.")
+            except Exception as e:
+                st.error(f"Error reading CSV: {e}")
         else:
-            st.info("CSV not found.")
+            st.info("CSV log not found.")
     elif admin_key:
         st.error("❌ Invalid key.")
