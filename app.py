@@ -17,15 +17,11 @@ from email.mime.multipart import MIMEMultipart
 from email import encoders
 import pandas as pd
 
-# ✅ Aspose Cloud
+# Aspose Cloud
 import asposewordscloud
 from asposewordscloud.apis.words_api import WordsApi
 from asposewordscloud.models.requests import UploadFileRequest, SaveAsRequest, DownloadFileRequest
 from asposewordscloud.models import PdfSaveOptionsData
-
-# ✅ Google Sheets
-from google.oauth2.service_account import Credentials
-import gspread
 
 # --- Config ---
 st.set_page_config("Intern Offer Generator", layout="wide")
@@ -38,34 +34,16 @@ LOGO = "logo.png"
 
 # --- Aspose Setup ---
 api_sid = st.secrets["aspose"]["app_sid"]
-api_key = st.secrets["aspose"]["app_key"]  
+api_key = st.secrets["aspose"]["app_key"]
 words_api = WordsApi(api_sid, api_key)
 
-# --- Google Sheets Setup ---
-def get_gsheet():
-    scope = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=scope
-    )
-    client = gspread.authorize(creds)
-    return client.open("intern_offers").sheet1
-
-def save_to_gsheet(data):
-    sheet = get_gsheet()
-    row = [data['i_id'], data['intern_name'], data['domain'], data['start_date'], data['end_date'], data['offer_date'], data['email']]
-    sheet.append_row(row)
-
-# --- Template base64 decode ---
+# --- Template base64 write ---
 if not os.path.exists(TEMPLATE_FILE):
     encoded_template = st.secrets["template_base64"]["template_base64"]
     with open(TEMPLATE_FILE, "wb") as f:
         f.write(base64.b64decode(encoded_template))
 
-# --- Styling ---
+# --- Style ---
 st.markdown("""
 <style>
     .title-text {
@@ -101,7 +79,7 @@ def generate_certificate_key():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=9))
 
 def generate_qr(data):
-    qr = qrcode.QRCode(box_size=10, border=0)
+    qr = qrcode.QRCode(box_size=10, border=4)
     qr.add_data(data)
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
@@ -203,17 +181,12 @@ if submit:
         }
 
         save_to_csv(data)
-        try:
-            save_to_gsheet(data)
-        except Exception as e:
-            st.warning(f"⚠️ Google Sheet sync failed: {e}")
-
         doc = DocxTemplate(TEMPLATE_FILE)
         doc.render(data)
 
         qr_path = generate_qr(f"{intern_name}, {domain}, {start_date}, {end_date}, {offer_date}, {intern_id}")
         try:
-            doc.tables[0].rows[0].cells[2].paragraphs[0].add_run().add_picture(qr_path, width=Inches(1.4))
+            doc.tables[0].rows[0].cells[2].paragraphs[0].add_run().add_picture(qr_path, width=Inches(1.5))
         except:
             st.warning("⚠️ QR insertion failed.")
 
@@ -225,15 +198,13 @@ if submit:
         local_pdf_path = os.path.join(tempfile.gettempdir(), cloud_pdf_name)
 
         try:
+            # Upload to Aspose
             with open(docx_path, "rb") as f:
-                upload_result = words_api.upload_file(UploadFileRequest(f, cloud_doc_name))
+                words_api.upload_file(UploadFileRequest(f, cloud_doc_name))
 
-            if not upload_result.uploaded or cloud_doc_name not in upload_result.uploaded:
-                st.error(f"❌ Upload to Aspose failed. File {cloud_doc_name} not found.")
-            else:
-                save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
-                save_as_request = SaveAsRequest(name=cloud_doc_name, save_options_data=save_opts)
-                words_api.save_as(save_as_request)
+            save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
+            save_as_request = SaveAsRequest(name=cloud_doc_name, save_options_data=save_opts)
+            words_api.save_as(save_as_request)
 
             pdf_stream = words_api.download_file(DownloadFileRequest(cloud_pdf_name))
             with open(local_pdf_path, "wb") as f:
@@ -269,6 +240,7 @@ with st.expander("🔐 Admin Panel"):
             st.info("CSV log not found.")
 
         st.divider()
+        
         st.markdown("<h3 style='color:#1E88E5;'>📥 One-Time CSV Upload <small style='color:gray;'>(Optional)</small></h3>", unsafe_allow_html=True)   
         uploaded_csv = st.file_uploader("Upload Existing Intern CSV", type=["csv"])
         if uploaded_csv is not None:
