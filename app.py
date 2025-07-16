@@ -216,7 +216,7 @@ if submit:
                 words_api.upload_file(upload_request)
 
             save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
-            save_as_request = SaveAsRequest(name=upload_path, save_options_data=save_opts)
+            save_request = SaveAsRequest(name=upload_path, save_options_data=save_opts)
             words_api.save_as(save_request)
 
             download_request = DownloadFileRequest(path=cloud_pdf_name)
