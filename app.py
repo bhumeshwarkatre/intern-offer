@@ -231,7 +231,6 @@ if submit:
                     file_content=f,
                     path=cloud_doc_name, 
                     storage_name=STORAGE_NAME
-                    folder="/"
                 )
                 upload_result = words_api.upload_file(upload_request)
 
