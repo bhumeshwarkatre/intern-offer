@@ -4,3 +4,4 @@ qrcode
 python-docx
 aspose-words-cloud
 pycryptodome
+pip install gspread google-auth
