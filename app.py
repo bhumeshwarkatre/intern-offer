@@ -228,7 +228,7 @@ if submit:
         try:
             with open(docx_path, "rb") as f:
                 upload_request = UploadFileRequest(
-                    file_content=f,
+                    file_content=f.read()
                     path=cloud_doc_name, 
                     storage_name=STORAGE_NAME
                 )
