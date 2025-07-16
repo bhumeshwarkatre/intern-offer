@@ -207,17 +207,20 @@ if submit:
 
         cloud_doc_name = f"{intern_id}.docx"
         cloud_pdf_name = f"Offer_{intern_name}.pdf"
+        upload_path = f"temp/{cloud_doc_name}"
         local_pdf_path = os.path.join(tempfile.gettempdir(), cloud_pdf_name)
 
         try:
             with open(docx_path, "rb") as f:
-                words_api.upload_file(UploadFileRequest(f, cloud_doc_name))
+                upload_request = UploadFileRequest(f, path=upload_path)
+                words_api.upload_file(upload_request)
 
             save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
-            save_as_request = SaveAsRequest(name=cloud_doc_name, save_options_data=save_opts)
-            words_api.save_as(save_as_request)
+            save_as_request = SaveAsRequest(name=upload_path, save_options_data=save_opts)
+            words_api.save_as(save_request)
 
-            pdf_stream = words_api.download_file(DownloadFileRequest(cloud_pdf_name))
+            download_request = DownloadFileRequest(path=cloud_pdf_name)
+            pdf_stream = words_api.download_file(download_request)
             with open(local_pdf_path, "wb") as f:
                 f.write(pdf_stream)
 
