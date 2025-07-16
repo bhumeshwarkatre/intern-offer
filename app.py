@@ -1,5 +1,6 @@
 import os
 import re
+import csv
 import qrcode
 import random
 import string
@@ -15,7 +16,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email import encoders
 import pandas as pd
-import logging
 
 # ✅ Aspose Cloud
 import asposewordscloud
@@ -32,6 +32,7 @@ st.set_page_config("Intern Offer Generator", layout="wide")
 EMAIL = st.secrets["email"]["user"]
 PASSWORD = st.secrets["email"]["password"]
 ADMIN_KEY = st.secrets["admin"]["key"]
+CSV_FILE = "intern_offers.csv"
 TEMPLATE_FILE = os.path.join(tempfile.gettempdir(), "offer_template.docx")
 LOGO = "logo.png"
 
@@ -40,13 +41,7 @@ api_sid = st.secrets["aspose"]["app_sid"]
 api_key = st.secrets["aspose"]["app_key"]
 words_api = WordsApi(api_sid, api_key)
 
-# --- Template base64 decode ---
-if not os.path.exists(TEMPLATE_FILE):
-    encoded_template = st.secrets["template_base64"]["template_base64"]
-    with open(TEMPLATE_FILE, "wb") as f:
-        f.write(base64.b64decode(encoded_template))
-
-# --- Google Sheet Setup ---
+# --- Google Sheets Setup ---
 def get_gsheet():
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -63,6 +58,12 @@ def save_to_gsheet(data):
     sheet = get_gsheet()
     row = [data['i_id'], data['intern_name'], data['domain'], data['start_date'], data['end_date'], data['offer_date'], data['email']]
     sheet.append_row(row)
+
+# --- Template base64 decode ---
+if not os.path.exists(TEMPLATE_FILE):
+    encoded_template = st.secrets["template_base64"]["template_base64"]
+    with open(TEMPLATE_FILE, "wb") as f:
+        f.write(base64.b64decode(encoded_template))
 
 # --- Styling ---
 st.markdown("""
@@ -92,7 +93,7 @@ with st.container():
 
 st.divider()
 
-# --- Utilities ---
+# --- Utility Functions ---
 def format_date(d):
     return d.strftime("%A, %d %B %Y")
 
@@ -107,6 +108,14 @@ def generate_qr(data):
     path = os.path.join(tempfile.gettempdir(), "qr.png")
     img.save(path)
     return path
+
+def save_to_csv(data):
+    exists = os.path.exists(CSV_FILE)
+    with open(CSV_FILE, mode='a', newline='') as f:
+        writer = csv.writer(f)
+        if not exists:
+            writer.writerow(["Intern ID", "Intern Name", "Domain", "Start Date", "End Date", "Offer Date", "Email"])
+        writer.writerow([data['i_id'], data['intern_name'], data['domain'], data['start_date'], data['end_date'], data['offer_date'], data['email']])
 
 def send_email(receiver, pdf_path, data):
     msg = MIMEMultipart()
@@ -193,7 +202,11 @@ if submit:
             "email": email.lower().strip()
         }
 
-        save_to_gsheet(data)
+        save_to_csv(data)
+        try:
+            save_to_gsheet(data)
+        except Exception as e:
+            st.warning(f"⚠️ Google Sheet sync failed: {e}")
 
         doc = DocxTemplate(TEMPLATE_FILE)
         doc.render(data)
@@ -207,19 +220,19 @@ if submit:
         docx_path = os.path.join(tempfile.gettempdir(), f"Offer_{intern_name}.docx")
         doc.save(docx_path)
 
-        cloud_doc_path = f"temp/{intern_id}.docx"
-        cloud_pdf_path = f"temp/Offer_{intern_name}.pdf"
-        local_pdf_path = os.path.join(tempfile.gettempdir(), f"Offer_{intern_name}.pdf")
+        cloud_doc_name = f"{intern_id}.docx"
+        cloud_pdf_name = f"Offer_{intern_name}.pdf"
+        local_pdf_path = os.path.join(tempfile.gettempdir(), cloud_pdf_name)
 
         try:
             with open(docx_path, "rb") as f:
-                words_api.upload_file(UploadFileRequest(f, cloud_doc_path))
+                words_api.upload_file(UploadFileRequest(f, cloud_doc_name))
 
-            save_opts = PdfSaveOptionsData(file_name=cloud_pdf_path)
-            save_request = SaveAsRequest(name=cloud_doc_path, save_options_data=save_opts)
-            words_api.save_as(save_request)
+            save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
+            save_as_request = SaveAsRequest(name=cloud_doc_name, save_options_data=save_opts)
+            words_api.save_as(save_as_request)
 
-            pdf_stream = words_api.download_file(DownloadFileRequest(path=cloud_pdf_path))
+            pdf_stream = words_api.download_file(DownloadFileRequest(cloud_pdf_name))
             with open(local_pdf_path, "wb") as f:
                 f.write(pdf_stream)
 
@@ -230,8 +243,7 @@ if submit:
                 st.download_button("📥 Download Offer Letter", f, file_name=os.path.basename(local_pdf_path))
 
         except Exception as e:
-            logging.exception("Error during document generation or upload:")
-            st.error("❌ Error occurred during PDF generation. Check logs or Aspose credentials.")
+            st.error(f"❌ Error occurred: {e}")
 
 # --- Admin Panel ---
 st.divider()
@@ -239,18 +251,32 @@ with st.expander("🔐 Admin Panel"):
     admin_key = st.text_input("Enter Admin Key", type="password")
     if admin_key == ADMIN_KEY:
         st.success("✅ Access granted.")
-        try:
-            sheet = get_gsheet()
-            records = sheet.get_all_records()
-            df = pd.DataFrame(records)
-            if not df.empty:
-                st.dataframe(df)
-            else:
-                st.info("No records found.")
-        except Exception as e:
-            st.error(f"❌ Failed to load Google Sheet: {e}")
+        if os.path.exists(CSV_FILE):
+            try:
+                df = pd.read_csv(CSV_FILE)
+                if not df.empty:
+                    st.dataframe(df)
+                    with open(CSV_FILE, "rb") as f_dl:
+                        st.download_button("📥 Download CSV", f_dl, file_name="intern_offers.csv")
+                else:
+                    st.info("CSV file is empty.")
+            except Exception as e:
+                st.error(f"Error reading CSV: {e}")
+        else:
+            st.info("CSV log not found.")
+
+        st.divider()
+        st.markdown("<h3 style='color:#1E88E5;'>📥 One-Time CSV Upload <small style='color:gray;'>(Optional)</small></h3>", unsafe_allow_html=True)   
+        uploaded_csv = st.file_uploader("Upload Existing Intern CSV", type=["csv"])
+        if uploaded_csv is not None:
+            try:
+                with open(CSV_FILE, "wb") as f:
+                    f.write(uploaded_csv.read())
+                st.success("✅ Uploaded and saved CSV successfully.")
+            except Exception as e:
+                st.error(f"Error saving uploaded CSV: {e}")
     elif admin_key:
         st.error("❌ Invalid key.")
 
-# --- Footer ---
+# 🔽 Footer
 st.markdown("<hr><center><small>© 2025 SkyHighes Technologies. All Rights Reserved.</small></center>", unsafe_allow_html=True)
