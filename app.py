@@ -47,10 +47,16 @@ if not os.path.exists(TEMPLATE_FILE):
 
 # --- Google Sheet Setup ---
 def get_gsheet():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], scope)
+    scope = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=scope
+    )
     client = gspread.authorize(creds)
-    return client.open("intern_offers").sheet1
+    return client.open("intern_offers").sheet1  # ✅ Sheet name here
 
 def save_to_gsheet(data):
     sheet = get_gsheet()
