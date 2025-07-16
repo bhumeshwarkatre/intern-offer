@@ -23,8 +23,8 @@ from asposewordscloud.models.requests import UploadFileRequest, SaveAsRequest, D
 from asposewordscloud.models import PdfSaveOptionsData
 
 # ✅ Google Sheets
+from google.oauth2.service_account import Credentials
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 
 # --- Config ---
 st.set_page_config("Intern Offer Generator", layout="wide")
