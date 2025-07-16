@@ -16,7 +16,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email import encoders
 import pandas as pd
-import time
 
 # Aspose Cloud
 import asposewordscloud
@@ -202,8 +201,6 @@ if submit:
             # Upload to Aspose
             with open(docx_path, "rb") as f:
                 words_api.upload_file(UploadFileRequest(f, cloud_doc_name))
-
-            time.sleep(2)
 
             save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
             save_as_request = SaveAsRequest(name=cloud_doc_name, save_options_data=save_opts)
