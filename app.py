@@ -229,7 +229,7 @@ if submit:
             with open(docx_path, "rb") as f:
                 upload_request = UploadFileRequest(
                     file_content=f,
-                     path=f"/{cloud_doc_name}",
+                    path=f"/{cloud_doc_name}",
                     storage_name=STORAGE_NAME,
                     folder="/"
                 )
