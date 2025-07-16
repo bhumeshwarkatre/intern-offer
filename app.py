@@ -229,8 +229,8 @@ if submit:
             with open(docx_path, "rb") as f:
                 upload_request = UploadFileRequest(
                     file_content=f,
-                    path=f"/{cloud_doc_name}",
-                    storage_name=STORAGE_NAME,
+                    path=cloud_doc_name, 
+                    storage_name=STORAGE_NAME
                     folder="/"
                 )
                 upload_result = words_api.upload_file(upload_request)
@@ -240,10 +240,10 @@ if submit:
             else:
                 save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
                 save_request = SaveAsRequest(
-                    name=f"/{cloud_doc_name}",
+                    name=cloud_doc_name,
                     save_options_data=save_opts,
                     storage_name=STORAGE_NAME,
-                    folder="/"
+                    folder=""
                 )
                 save_result = words_api.save_as(save_request)
                 cloud_pdf_path = save_result.save_result.dest_document.href
