@@ -15,6 +15,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email import encoders
 import pandas as pd
+import logging
 
 # ✅ Aspose Cloud
 import asposewordscloud
@@ -26,7 +27,10 @@ from asposewordscloud.models import PdfSaveOptionsData
 from google.oauth2.service_account import Credentials
 import gspread
 
-# --- Config ---
+# --- Logging ---
+logging.basicConfig(level=logging.INFO)
+
+# --- Streamlit Config ---
 st.set_page_config("Intern Offer Generator", layout="wide")
 EMAIL = st.secrets["email"]["user"]
 PASSWORD = st.secrets["email"]["password"]
@@ -39,7 +43,7 @@ api_sid = st.secrets["aspose"]["app_sid"]
 api_key = st.secrets["aspose"]["app_key"]
 words_api = WordsApi(api_sid, api_key)
 
-# --- Template base64 decode ---
+# --- Decode Template from Base64 on First Run ---
 if not os.path.exists(TEMPLATE_FILE):
     encoded_template = st.secrets["template_base64"]["template_base64"]
     with open(TEMPLATE_FILE, "wb") as f:
@@ -56,42 +60,19 @@ def get_gsheet():
         scopes=scope
     )
     client = gspread.authorize(creds)
-    return client.open("intern_offers").sheet1  # ✅ Sheet name here
+    return client.open("intern_offers").sheet1
 
 def save_to_gsheet(data):
-    sheet = get_gsheet()
-    row = [data['i_id'], data['intern_name'], data['domain'], data['start_date'], data['end_date'], data['offer_date'], data['email']]
-    sheet.append_row(row)
+    try:
+        sheet = get_gsheet()
+        row = [data['i_id'], data['intern_name'], data['domain'],
+               data['start_date'], data['end_date'], data['offer_date'], data['email']]
+        sheet.append_row(row)
+    except Exception as e:
+        st.warning("⚠️ Could not log to Google Sheet.")
+        logging.exception("Google Sheet error:")
 
-# --- Styling ---
-st.markdown("""
-<style>
-    .title-text {
-        font-size: 2rem;
-        font-weight: 700;
-    }
-    .stButton>button {
-        background-color: #1E88E5;
-        color: white;
-        padding: 0.5rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 600;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# --- Header ---
-with st.container():
-    col_logo, col_title = st.columns([1, 6])
-    with col_logo:
-        if os.path.exists(LOGO):
-            st.image(LOGO, width=80)
-    with col_title:
-        st.markdown('<div class="title-text">SkyHighes Technologies Internship Letter Portal</div>', unsafe_allow_html=True)
-
-st.divider()
-
-# --- Utilities ---
+# --- Utility Functions ---
 def format_date(d):
     return d.strftime("%A, %d %B %Y")
 
@@ -115,23 +96,11 @@ def send_email(receiver, pdf_path, data):
 
     html = f"""
     <html>
-    <body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
-      <div style="background-color: #fff; padding: 20px; border-radius: 10px;">
+    <body>
         <p>Dear {data["intern_name"]},</p>
-        <p>We are delighted to offer you an <strong>Internship Opportunity</strong> at <strong>SkyHighes Technology</strong>! 🎉</p>
-        <h3>Internship Details:</h3>
-        <ul>
-          <li><b>Intern Name:</b> {data["intern_name"]}</li>
-          <li><b>Domain:</b> {data["domain"]}</li>
-          <li><b>Start Date:</b> {data["start_date"]}</li>
-          <li><b>End Date:</b> {data["end_date"]}</li>
-          <li><b>Offer Date:</b> {data["offer_date"]}</li>
-        </ul>
-        <p>Your offer letter is attached as a PDF document. Kindly review and confirm your acceptance.</p>
-        <p>We look forward to working with you!</p>
-        <br>
-        <p><strong>SkyHighes Technology Team</strong></p>
-      </div>
+        <p>We are delighted to offer you an <strong>Internship Opportunity</strong> at <strong>SkyHighes Technology</strong>!</p>
+        <p>Your offer letter is attached. Kindly review and confirm your acceptance.</p>
+        <p>Regards,<br><strong>SkyHighes Team</strong></p>
     </body>
     </html>
     """
@@ -141,8 +110,7 @@ def send_email(receiver, pdf_path, data):
         part = MIMEBase("application", "octet-stream")
         part.set_payload(f.read())
         encoders.encode_base64(part)
-        filename = os.path.basename(pdf_path)
-        part.add_header("Content-Disposition", f"attachment; filename={filename}")
+        part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(pdf_path)}")
         msg.attach(part)
 
     with SMTP("smtp.gmail.com", 587) as server:
@@ -150,25 +118,37 @@ def send_email(receiver, pdf_path, data):
         server.login(EMAIL, PASSWORD)
         server.send_message(msg)
 
+# --- UI Header ---
+st.markdown("""
+<style>
+.title-text { font-size: 2rem; font-weight: 700; }
+.stButton>button { background-color: #1E88E5; color: white; padding: 0.5rem 1.5rem; border-radius: 8px; font-weight: 600; }
+</style>
+""", unsafe_allow_html=True)
+
+with st.container():
+    col_logo, col_title = st.columns([1, 6])
+    with col_logo:
+        if os.path.exists(LOGO):
+            st.image(LOGO, width=80)
+    with col_title:
+        st.markdown('<div class="title-text">SkyHighes Technologies Internship Letter Portal</div>', unsafe_allow_html=True)
+
+st.divider()
+
 # --- Form ---
 with st.form("offer_form"):
     st.subheader("🎓 Internship Offer Letter Generator")
 
     col1, col2, col3 = st.columns(3)
-    with col1:
-        intern_name = st.text_input("Intern Name")
-    with col2:
-        domain = st.text_input("Domain")
-    with col3:
-        email = st.text_input("Recipient Email")
+    intern_name = col1.text_input("Intern Name")
+    domain = col2.text_input("Domain")
+    email = col3.text_input("Recipient Email")
 
     col4, col5, col6 = st.columns(3)
-    with col4:
-        start_date = st.date_input("Start Date", value=date.today())
-    with col5:
-        end_date = st.date_input("End Date", value=date.today())
-    with col6:
-        offer_date = st.date_input("Offer Date", value=date.today())
+    start_date = col4.date_input("Start Date", value=date.today())
+    end_date = col5.date_input("End Date", value=date.today())
+    offer_date = col6.date_input("Offer Date", value=date.today())
 
     submit = st.form_submit_button("🚀 Generate & Send Offer Letter")
 
@@ -192,35 +172,31 @@ if submit:
             "email": email.lower().strip()
         }
 
-        save_to_gsheet(data)
-        doc = DocxTemplate(TEMPLATE_FILE)
-        doc.render(data)
-
-        qr_path = generate_qr(f"{intern_name}, {domain}, {start_date}, {end_date}, {offer_date}, {intern_id}")
         try:
-            doc.tables[0].rows[0].cells[2].paragraphs[0].add_run().add_picture(qr_path, width=Inches(1.4))
-        except:
-            st.warning("⚠️ QR insertion failed.")
+            save_to_gsheet(data)
+            doc = DocxTemplate(TEMPLATE_FILE)
+            doc.render(data)
 
-        docx_path = os.path.join(tempfile.gettempdir(), f"Offer_{intern_name}.docx")
-        doc.save(docx_path)
+            qr_path = generate_qr(", ".join(data.values()))
+            try:
+                doc.tables[0].rows[0].cells[2].paragraphs[0].add_run().add_picture(qr_path, width=Inches(1.4))
+            except:
+                st.warning("⚠️ QR insertion failed.")
 
-        cloud_doc_name = f"{intern_id}.docx"
-        cloud_pdf_name = f"Offer_{intern_name}.pdf"
-        upload_path = f"temp/{cloud_doc_name}"
-        local_pdf_path = os.path.join(tempfile.gettempdir(), cloud_pdf_name)
+            docx_path = os.path.join(tempfile.gettempdir(), f"{intern_id}.docx")
+            doc.save(docx_path)
 
-        try:
+            cloud_path = f"temp/{intern_id}.docx"
+            cloud_pdf_name = f"Offer_{intern_name}.pdf"
+            local_pdf_path = os.path.join(tempfile.gettempdir(), cloud_pdf_name)
+
             with open(docx_path, "rb") as f:
-                upload_request = UploadFileRequest(f, path=upload_path)
-                words_api.upload_file(upload_request)
+                words_api.upload_file(UploadFileRequest(f, cloud_path))
 
             save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
-            save_request = SaveAsRequest(name=upload_path, save_options_data=save_opts)
-            words_api.save_as(save_request)
+            words_api.save_as(SaveAsRequest(name=cloud_path, save_options_data=save_opts))
 
-            download_request = DownloadFileRequest(path=cloud_pdf_name)
-            pdf_stream = words_api.download_file(download_request)
+            pdf_stream = words_api.download_file(DownloadFileRequest(path=cloud_pdf_name))
             with open(local_pdf_path, "wb") as f:
                 f.write(pdf_stream)
 
@@ -231,7 +207,8 @@ if submit:
                 st.download_button("📥 Download Offer Letter", f, file_name=os.path.basename(local_pdf_path))
 
         except Exception as e:
-            st.error(f"❌ Error occurred: {e}")
+            logging.exception("Error during document generation or upload:")
+            st.error(f"❌ Error occurred during processing. Please check the logs.")
 
 # --- Admin Panel ---
 st.divider()
@@ -241,16 +218,12 @@ with st.expander("🔐 Admin Panel"):
         st.success("✅ Access granted.")
         try:
             sheet = get_gsheet()
-            records = sheet.get_all_records()
-            df = pd.DataFrame(records)
-            if not df.empty:
-                st.dataframe(df)
-            else:
-                st.info("No records found.")
+            df = pd.DataFrame(sheet.get_all_records())
+            st.dataframe(df if not df.empty else pd.DataFrame(columns=["No Records"]))
         except Exception as e:
-            st.error(f"❌ Failed to load Google Sheet: {e}")
+            logging.exception("Failed to load sheet:")
+            st.error("❌ Failed to load Google Sheet.")
     elif admin_key:
         st.error("❌ Invalid key.")
 
-# --- Footer ---
 st.markdown("<hr><center><small>© 2025 SkyHighes Technologies. All Rights Reserved.</small></center>", unsafe_allow_html=True)
