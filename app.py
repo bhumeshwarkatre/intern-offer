@@ -39,6 +39,7 @@ LOGO = "logo.png"
 # --- Aspose Setup ---
 api_sid = st.secrets["aspose"]["app_sid"]
 api_key = st.secrets["aspose"]["app_key"]
+STORAGE_NAME = st.secrets["aspose"]["storage_name"]    
 words_api = WordsApi(api_sid, api_key)
 
 # --- Google Sheets Setup ---
@@ -226,16 +227,16 @@ if submit:
 
         try:
             with open(docx_path, "rb") as f:
-                upload_result = words_api.upload_file(UploadFileRequest(f, cloud_doc_name,storage_name="demo"))
+                upload_result = words_api.upload_file(UploadFileRequest(f, cloud_doc_name,storage_name=STORAGE_NAME))
 
             if not upload_result.uploaded or cloud_doc_name not in upload_result.uploaded:
                 st.error(f"❌ Upload to Aspose failed. File {cloud_doc_name} not found.")
             else:
                 save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
-                save_as_request = SaveAsRequest(name=cloud_doc_name, save_options_data=save_opts,storage_name="demo")
+                save_as_request = SaveAsRequest(name=cloud_doc_name, save_options_data=save_opts,storage_name=STORAGE_NAME)
                 words_api.save_as(save_as_request)
 
-            pdf_stream = words_api.download_file(DownloadFileRequest(cloud_pdf_name,storage_name="demo"))
+            pdf_stream = words_api.download_file(DownloadFileRequest(cloud_pdf_name,storage_name=STORAGE_NAME))
             with open(local_pdf_path, "wb") as f:
                 f.write(pdf_stream)
 
