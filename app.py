@@ -1,6 +1,5 @@
 import os
 import re
-import csv
 import qrcode
 import random
 import string
@@ -17,18 +16,21 @@ from email.mime.multipart import MIMEMultipart
 from email import encoders
 import pandas as pd
 
-# Aspose Cloud
+# ✅ Aspose Cloud
 import asposewordscloud
 from asposewordscloud.apis.words_api import WordsApi
 from asposewordscloud.models.requests import UploadFileRequest, SaveAsRequest, DownloadFileRequest
 from asposewordscloud.models import PdfSaveOptionsData
+
+# ✅ Google Sheets
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # --- Config ---
 st.set_page_config("Intern Offer Generator", layout="wide")
 EMAIL = st.secrets["email"]["user"]
 PASSWORD = st.secrets["email"]["password"]
 ADMIN_KEY = st.secrets["admin"]["key"]
-CSV_FILE = "intern_offers.csv"
 TEMPLATE_FILE = os.path.join(tempfile.gettempdir(), "offer_template.docx")
 LOGO = "logo.png"
 
@@ -37,13 +39,25 @@ api_sid = st.secrets["aspose"]["app_sid"]
 api_key = st.secrets["aspose"]["app_key"]
 words_api = WordsApi(api_sid, api_key)
 
-# --- Template base64 write ---
+# --- Template base64 decode ---
 if not os.path.exists(TEMPLATE_FILE):
     encoded_template = st.secrets["template_base64"]["template_base64"]
     with open(TEMPLATE_FILE, "wb") as f:
         f.write(base64.b64decode(encoded_template))
 
-# --- Style ---
+# --- Google Sheet Setup ---
+def get_gsheet():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], scope)
+    client = gspread.authorize(creds)
+    return client.open("intern_offers").sheet1
+
+def save_to_gsheet(data):
+    sheet = get_gsheet()
+    row = [data['i_id'], data['intern_name'], data['domain'], data['start_date'], data['end_date'], data['offer_date'], data['email']]
+    sheet.append_row(row)
+
+# --- Styling ---
 st.markdown("""
 <style>
     .title-text {
@@ -71,7 +85,7 @@ with st.container():
 
 st.divider()
 
-# --- Utility Functions ---
+# --- Utilities ---
 def format_date(d):
     return d.strftime("%A, %d %B %Y")
 
@@ -79,21 +93,13 @@ def generate_certificate_key():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=9))
 
 def generate_qr(data):
-    qr = qrcode.QRCode(box_size=10, border=4)
+    qr = qrcode.QRCode(box_size=10, border=0)
     qr.add_data(data)
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
     path = os.path.join(tempfile.gettempdir(), "qr.png")
     img.save(path)
     return path
-
-def save_to_csv(data):
-    exists = os.path.exists(CSV_FILE)
-    with open(CSV_FILE, mode='a', newline='') as f:
-        writer = csv.writer(f)
-        if not exists:
-            writer.writerow(["Intern ID", "Intern Name", "Domain", "Start Date", "End Date", "Offer Date", "Email"])
-        writer.writerow([data['i_id'], data['intern_name'], data['domain'], data['start_date'], data['end_date'], data['offer_date'], data['email']])
 
 def send_email(receiver, pdf_path, data):
     msg = MIMEMultipart()
@@ -180,13 +186,13 @@ if submit:
             "email": email.lower().strip()
         }
 
-        save_to_csv(data)
+        save_to_gsheet(data)
         doc = DocxTemplate(TEMPLATE_FILE)
         doc.render(data)
 
         qr_path = generate_qr(f"{intern_name}, {domain}, {start_date}, {end_date}, {offer_date}, {intern_id}")
         try:
-            doc.tables[0].rows[0].cells[2].paragraphs[0].add_run().add_picture(qr_path, width=Inches(1.5))
+            doc.tables[0].rows[0].cells[2].paragraphs[0].add_run().add_picture(qr_path, width=Inches(1.4))
         except:
             st.warning("⚠️ QR insertion failed.")
 
@@ -198,7 +204,6 @@ if submit:
         local_pdf_path = os.path.join(tempfile.gettempdir(), cloud_pdf_name)
 
         try:
-            # Upload to Aspose
             with open(docx_path, "rb") as f:
                 words_api.upload_file(UploadFileRequest(f, cloud_doc_name))
 
@@ -225,33 +230,18 @@ with st.expander("🔐 Admin Panel"):
     admin_key = st.text_input("Enter Admin Key", type="password")
     if admin_key == ADMIN_KEY:
         st.success("✅ Access granted.")
-        if os.path.exists(CSV_FILE):
-            try:
-                df = pd.read_csv(CSV_FILE)
-                if not df.empty:
-                    st.dataframe(df)
-                    with open(CSV_FILE, "rb") as f_dl:
-                        st.download_button("📥 Download CSV", f_dl, file_name="intern_offers.csv")
-                else:
-                    st.info("CSV file is empty.")
-            except Exception as e:
-                st.error(f"Error reading CSV: {e}")
-        else:
-            st.info("CSV log not found.")
-
-        st.divider()
-        
-        st.markdown("<h3 style='color:#1E88E5;'>📥 One-Time CSV Upload <small style='color:gray;'>(Optional)</small></h3>", unsafe_allow_html=True)   
-        uploaded_csv = st.file_uploader("Upload Existing Intern CSV", type=["csv"])
-        if uploaded_csv is not None:
-            try:
-                with open(CSV_FILE, "wb") as f:
-                    f.write(uploaded_csv.read())
-                st.success("✅ Uploaded and saved CSV successfully.")
-            except Exception as e:
-                st.error(f"Error saving uploaded CSV: {e}")
+        try:
+            sheet = get_gsheet()
+            records = sheet.get_all_records()
+            df = pd.DataFrame(records)
+            if not df.empty:
+                st.dataframe(df)
+            else:
+                st.info("No records found.")
+        except Exception as e:
+            st.error(f"❌ Failed to load Google Sheet: {e}")
     elif admin_key:
         st.error("❌ Invalid key.")
 
-# 🔽 Footer
+# --- Footer ---
 st.markdown("<hr><center><small>© 2025 SkyHighes Technologies. All Rights Reserved.</small></center>", unsafe_allow_html=True)
