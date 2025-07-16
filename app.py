@@ -229,7 +229,7 @@ if submit:
             with open(docx_path, "rb") as f:
                 upload_request = UploadFileRequest(
                     file_content=f,
-                    path=cloud_doc_name,
+                     path=f"/{cloud_doc_name}",
                     storage_name=STORAGE_NAME,
                     folder="/"
                 )
@@ -240,7 +240,7 @@ if submit:
             else:
                 save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
                 save_request = SaveAsRequest(
-                    name=cloud_doc_name,
+                    name=f"/{cloud_doc_name}",
                     save_options_data=save_opts,
                     storage_name=STORAGE_NAME,
                     folder="/"
