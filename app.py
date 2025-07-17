@@ -249,37 +249,37 @@ if submit:
             st.error(f"❌ Error occurred: {e}")
 
 # --- Admin Panel ---
-st.divider()
-with st.expander("🔐 Admin Panel"):
-    admin_key = st.text_input("Enter Admin Key", type="password")
-    if admin_key == ADMIN_KEY:
-        st.success("✅ Access granted.")
-        if os.path.exists(CSV_FILE):
-            try:
-                df = pd.read_csv(CSV_FILE)
-                if not df.empty:
-                    st.dataframe(df)
-                    with open(CSV_FILE, "rb") as f_dl:
-                        st.download_button("📥 Download CSV", f_dl, file_name="intern_offers.csv")
-                else:
-                    st.info("CSV file is empty.")
-            except Exception as e:
-                st.error(f"Error reading CSV: {e}")
-        else:
-            st.info("CSV log not found.")
+# st.divider()
+# with st.expander("🔐 Admin Panel"):
+#     admin_key = st.text_input("Enter Admin Key", type="password")
+#     if admin_key == ADMIN_KEY:
+#         st.success("✅ Access granted.")
+#         if os.path.exists(CSV_FILE):
+#             try:
+#                 df = pd.read_csv(CSV_FILE)
+#                 if not df.empty:
+#                     st.dataframe(df)
+#                     with open(CSV_FILE, "rb") as f_dl:
+#                         st.download_button("📥 Download CSV", f_dl, file_name="intern_offers.csv")
+#                 else:
+#                     st.info("CSV file is empty.")
+#             except Exception as e:
+#                 st.error(f"Error reading CSV: {e}")
+#         else:
+#             st.info("CSV log not found.")
 
-        st.divider()
-        st.markdown("<h3 style='color:#1E88E5;'>📥 One-Time CSV Upload <small style='color:gray;'>(Optional)</small></h3>", unsafe_allow_html=True)   
-        uploaded_csv = st.file_uploader("Upload Existing Intern CSV", type=["csv"])
-        if uploaded_csv is not None:
-            try:
-                with open(CSV_FILE, "wb") as f:
-                    f.write(uploaded_csv.read())
-                st.success("✅ Uploaded and saved CSV successfully.")
-            except Exception as e:
-                st.error(f"Error saving uploaded CSV: {e}")
-    elif admin_key:
-        st.error("❌ Invalid key.")
+#         st.divider()
+#         st.markdown("<h3 style='color:#1E88E5;'>📥 One-Time CSV Upload <small style='color:gray;'>(Optional)</small></h3>", unsafe_allow_html=True)   
+#         uploaded_csv = st.file_uploader("Upload Existing Intern CSV", type=["csv"])
+#         if uploaded_csv is not None:
+#             try:
+#                 with open(CSV_FILE, "wb") as f:
+#                     f.write(uploaded_csv.read())
+#                 st.success("✅ Uploaded and saved CSV successfully.")
+#             except Exception as e:
+#                 st.error(f"Error saving uploaded CSV: {e}")
+#     elif admin_key:
+#         st.error("❌ Invalid key.")
 
 # 🔽 Footer
 st.markdown("<hr><center><small>© 2025 SkyHighes Technologies. All Rights Reserved.</small></center>", unsafe_allow_html=True)
