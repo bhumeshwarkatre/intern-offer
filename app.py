@@ -35,11 +35,10 @@ ADMIN_KEY = st.secrets["admin"]["key"]
 CSV_FILE = "intern_offers.csv"
 TEMPLATE_FILE = os.path.join(tempfile.gettempdir(), "offer_template.docx")
 LOGO = "logo.png"
-STORAGE_NAME = "demo"  # ✅ Your Aspose storage name
 
 # --- Aspose Setup ---
 api_sid = st.secrets["aspose"]["app_sid"]
-api_key = st.secrets["aspose"]["app_key"]
+api_key = st.secrets["aspose"]["app_key"]  
 words_api = WordsApi(api_sid, api_key)
 
 # --- Google Sheets Setup ---
@@ -227,37 +226,24 @@ if submit:
 
         try:
             with open(docx_path, "rb") as f:
-                upload_request = UploadFileRequest(
-                    file_path=docx_path,
-                    path=cloud_doc_name, 
-                    storage_name=STORAGE_NAME
-                )
-                upload_result = words_api.upload_file(upload_request)
+                upload_result = words_api.upload_file(UploadFileRequest(f, cloud_doc_name))
 
             if not upload_result.uploaded or cloud_doc_name not in upload_result.uploaded:
                 st.error(f"❌ Upload to Aspose failed. File {cloud_doc_name} not found.")
             else:
                 save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
-                save_request = SaveAsRequest(
-                    name=cloud_doc_name,
-                    save_options_data=save_opts,
-                    storage_name=STORAGE_NAME,
-                    folder=""
-                )
-                save_result = words_api.save_as(save_request)
-                cloud_pdf_path = save_result.save_result.dest_document.href
+                save_as_request = SaveAsRequest(name=cloud_doc_name, save_options_data=save_opts)
+                words_api.save_as(save_as_request)
 
-                pdf_stream = words_api.download_file(
-                    DownloadFileRequest(cloud_pdf_path, storage_name=STORAGE_NAME)
-                )
-                with open(local_pdf_path, "wb") as f:
-                    f.write(pdf_stream)
+            pdf_stream = words_api.download_file(DownloadFileRequest(cloud_pdf_name))
+            with open(local_pdf_path, "wb") as f:
+                f.write(pdf_stream)
 
-                send_email(email, local_pdf_path, data)
-                st.success(f"✅ Offer letter sent to {email}")
+            send_email(email, local_pdf_path, data)
+            st.success(f"✅ Offer letter sent to {email}")
 
-                with open(local_pdf_path, "rb") as f:
-                    st.download_button("📥 Download Offer Letter", f, file_name=os.path.basename(local_pdf_path))
+            with open(local_pdf_path, "rb") as f:
+                st.download_button("📥 Download Offer Letter", f, file_name=os.path.basename(local_pdf_path))
 
         except Exception as e:
             st.error(f"❌ Error occurred: {e}")
@@ -283,7 +269,7 @@ with st.expander("🔐 Admin Panel"):
             st.info("CSV log not found.")
 
         st.divider()
-        st.markdown("<h3 style='color:#1E88E5;'>📥 One-Time CSV Upload <small style='color:gray;'>(Optional)</small></h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#1E88E5;'>📥 One-Time CSV Upload <small style='color:gray;'>(Optional)</small></h3>", unsafe_allow_html=True)   
         uploaded_csv = st.file_uploader("Upload Existing Intern CSV", type=["csv"])
         if uploaded_csv is not None:
             try:
