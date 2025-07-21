@@ -138,7 +138,7 @@ def send_email(receiver, pdf_path, data):
     msg = MIMEMultipart()
     msg['From'] = EMAIL
     msg['To'] = receiver
-    msg['Subject'] = f"🎉 Congratulations {data['intern_name']}! Your Internship Offer"
+    msg['Subject'] = f"🎉 Congratulations {data['intern_name']}! Your Internship Offer from SkyHighes Technology"
 
     html = f"""
     <html>
@@ -148,14 +148,15 @@ def send_email(receiver, pdf_path, data):
         <p>We are delighted to offer you an <strong>Internship Opportunity</strong> at <strong>SkyHighes Technology</strong>! 🎉</p>
         <h3>Internship Details:</h3>
         <ul>
-          <li><b>Intern Name:</b> {data["intern_name"]}</li>
-          <li><b>Domain:</b> {data["domain"]}</li>
-          <li><b>Start Date:</b> {data["start_date"]}</li>
-          <li><b>End Date:</b> {data["end_date"]}</li>
-          <li><b>Offer Date:</b> {data["offer_date"]}</li>
+          <li>🏆<b>Intern Name:</b> {data["intern_name"]}</li>
+          <li>💻<b>Domain:</b> {data["domain"]}</li>
+          <li>📅<b>Start Date:</b> {data["start_date"]}</li>
+          <li>⏳<b>End Date:</b> {data["end_date"]}</li>
+          <li>🗓<b>Offer Date:</b> {data["offer_date"]}</li>
         </ul>
-        <p>Your offer letter is attached as a PDF document. Kindly review and confirm your acceptance.</p>
-        <p>We look forward to working with you!</p>
+        <p>Please find your <strong>Internship Offer Letter</strong> attached to this email. Kindly review the document and confirm your acceptance at the earliest.</p>
+        <p>We look forward to seeing you grow and contribute to innovative projects with us. If you have any questions, feel free to reach out.</p>
+        <p>Welcome to SkyHighes Technology! 🚀</p>
         <br>
         <p><strong>SkyHighes Technology Team</strong></p>
       </div>
