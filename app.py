@@ -93,6 +93,25 @@ with st.container():
 
 st.divider()
 
+# redirect page 
+
+#Link
+completion_app_url = "https://certificategenerator-xd9pabvltdcfsn65kx2m2d.streamlit.app/" 
+
+st.markdown(
+    f"""
+    <div style="margin-bottom: 20px;">
+        <a href="{completion_app_url}" target="_blank">
+            <button style='font-size:16px;padding:10px 24px; background-color:#28a745; color:white; border:none; border-radius:5px; cursor:pointer;'>
+                🎓 Go to Completion Certificate App
+            </button>
+        </a>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
 # --- Utility Functions ---
 def format_date(d):
     return d.strftime("%A, %d %B %Y")
