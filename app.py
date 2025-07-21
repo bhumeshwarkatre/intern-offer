@@ -17,13 +17,13 @@ from email.mime.multipart import MIMEMultipart
 from email import encoders
 import pandas as pd
 
-# ✅ Aspose Cloud
+#  Aspose Cloud
 import asposewordscloud
 from asposewordscloud.apis.words_api import WordsApi
 from asposewordscloud.models.requests import UploadFileRequest, SaveAsRequest, DownloadFileRequest
 from asposewordscloud.models import PdfSaveOptionsData
 
-# ✅ Google Sheets
+#  Google Sheets
 from google.oauth2.service_account import Credentials
 import gspread
 
@@ -94,16 +94,14 @@ with st.container():
 st.divider()
 
 # redirect page 
-
-#Link
-completion_app_url = "https://certificategenerator-xd9pabvltdcfsn65kx2m2d.streamlit.app/" 
+completion_app_url = st.secrets["links"]["completion_app"]
 
 st.markdown(
     f"""
     <div style="margin-bottom: 20px;">
         <a href="{completion_app_url}" target="_blank">
             <button style='font-size:16px;padding:10px 24px; background-color:#28a745; color:white; border:none; border-radius:5px; cursor:pointer;'>
-                🎓 Go to Completion Certificate App
+                 Go to Completion Certificate App
             </button>
         </a>
     </div>
@@ -204,11 +202,11 @@ with st.form("offer_form"):
 # --- On Submit ---
 if submit:
     if not all([intern_name, domain, email]):
-        st.error("❌ Please fill all fields.")
+        st.error(" Please fill all fields.")
     elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        st.warning("⚠️ Invalid email.")
+        st.warning(" Invalid email.")
     elif end_date < start_date:
-        st.warning("⚠️ End date cannot be before start date.")
+        st.warning(" End date cannot be before start date.")
     else:
         intern_id = generate_certificate_key()
         data = {
@@ -225,7 +223,7 @@ if submit:
         try:
             save_to_gsheet(data)
         except Exception as e:
-            st.warning(f"⚠️ Google Sheet sync failed: {e}")
+            st.warning(f" Google Sheet sync failed: {e}")
 
         doc = DocxTemplate(TEMPLATE_FILE)
         doc.render(data)
@@ -234,7 +232,7 @@ if submit:
         try:
             doc.tables[0].rows[0].cells[2].paragraphs[0].add_run().add_picture(qr_path, width=Inches(1.4))
         except:
-            st.warning("⚠️ QR insertion failed.")
+            st.warning(" QR insertion failed.")
 
         docx_path = os.path.join(tempfile.gettempdir(), f"Offer_{intern_name}.docx")
         doc.save(docx_path)
@@ -248,7 +246,7 @@ if submit:
                 upload_result = words_api.upload_file(UploadFileRequest(f, cloud_doc_name))
 
             if not upload_result.uploaded or cloud_doc_name not in upload_result.uploaded:
-                st.error(f"❌ Upload to Aspose failed. File {cloud_doc_name} not found.")
+                st.error(f" Upload to Aspose failed. File {cloud_doc_name} not found.")
             else:
                 save_opts = PdfSaveOptionsData(file_name=cloud_pdf_name)
                 save_as_request = SaveAsRequest(name=cloud_doc_name, save_options_data=save_opts)
@@ -259,20 +257,20 @@ if submit:
                 f.write(pdf_stream)
 
             send_email(email, local_pdf_path, data)
-            st.success(f"✅ Offer letter sent to {email}")
+            st.success(f" Offer letter sent to {email}")
 
             with open(local_pdf_path, "rb") as f:
                 st.download_button("📥 Download Offer Letter", f, file_name=os.path.basename(local_pdf_path))
 
         except Exception as e:
-            st.error(f"❌ Error occurred: {e}")
+            st.error(f" Error occurred: {e}")
 
 # --- Admin Panel ---
 # st.divider()
 # with st.expander("🔐 Admin Panel"):
 #     admin_key = st.text_input("Enter Admin Key", type="password")
 #     if admin_key == ADMIN_KEY:
-#         st.success("✅ Access granted.")
+#         st.success(" Access granted.")
 #         if os.path.exists(CSV_FILE):
 #             try:
 #                 df = pd.read_csv(CSV_FILE)
@@ -294,11 +292,11 @@ if submit:
 #             try:
 #                 with open(CSV_FILE, "wb") as f:
 #                     f.write(uploaded_csv.read())
-#                 st.success("✅ Uploaded and saved CSV successfully.")
+#                 st.success(" Uploaded and saved CSV successfully.")
 #             except Exception as e:
 #                 st.error(f"Error saving uploaded CSV: {e}")
 #     elif admin_key:
-#         st.error("❌ Invalid key.")
+#         st.error(" Invalid key.")
 
-# 🔽 Footer
+#  Footer
 st.markdown("<hr><center><small>© 2025 SkyHighes Technologies. All Rights Reserved.</small></center>", unsafe_allow_html=True)
